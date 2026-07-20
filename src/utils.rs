@@ -168,12 +168,12 @@ pub fn is_alpm_pkg_installed(package_name: &str) -> bool {
     alpm.localdb().pkg(package_name.as_bytes()).is_ok()
 }
 
-pub fn get_cachyos_pi_path() -> Option<String> {
-    which::which("cachyos-pi").ok().map(|p| p.to_string_lossy().into_owned())
+pub fn get_GuepardOS_pi_path() -> Option<String> {
+    which::which("GuepardOS-pi").ok().map(|p| p.to_string_lossy().into_owned())
 }
 
-pub fn is_cachyos_pi_installed() -> bool {
-    get_cachyos_pi_path().is_some()
+pub fn is_GuepardOS_pi_installed() -> bool {
+    get_GuepardOS_pi_path().is_some()
 }
 
 pub fn is_intel_amd_gpu(vendor_id: &str, class_id: &str) -> bool {

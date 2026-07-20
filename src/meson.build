@@ -1,20 +1,6 @@
 manifest_path = meson.project_source_root() / 'Cargo.toml'
 cargo_home = meson.project_build_root() / 'cargo-home'
-cargo_target_dir = meson.project_build_root() / 'src'
-
-cargo_options = [ '--manifest-path', manifest_path ]
-cargo_options += [ '--target-dir', cargo_target_dir ]
-
-if get_option('profile') == 'default'
-  cargo_options += [ '--release' ]
-  rust_target = 'release'
-  message('Building in release mode')
-else
-  rust_target = 'debug'
-  message('Building in debug mode')
-endif
-
-cargo_env = [ 'CARGO_HOME=' + cargo_home ]
+cargo_target_dir = meson.project_build_root() / 'target'
 
 cargo_build = custom_target(
   'cargo-build',
@@ -25,12 +11,12 @@ cargo_build = custom_target(
   install: true,
   install_dir: bindir,
   command: [
-    'env',
-    cargo_env,
-    cargo, 'build',
-    cargo_options,
-    '&&',
-    'cp', 'src' / rust_target / meson.project_name(), '@OUTPUT@',
+    cargo_script,
+    meson.project_build_root(),
+    meson.project_source_root(),
+    '@OUTPUT@',
+    profile,
+    meson.project_name(),
   ]
 )
 

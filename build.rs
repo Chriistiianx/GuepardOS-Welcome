@@ -13,8 +13,8 @@ fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
 
     let status = Command::new("glib-compile-resources")
-        .arg(format!("--target={out_dir}/cachyos-welcome.gresource"))
-        .arg("cachyos-welcome.gresource.xml")
+        .arg(format!("--target={out_dir}/guepardos-welcome.gresource"))
+        .arg("guepardos-welcome.gresource.xml")
         .status()
         .unwrap();
 
@@ -27,10 +27,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/config.rs");
     gen_config().expect("Failed to gen config.rs");
 
-    if let Err(e) = gen_release_page() {
-        eprintln!("cargo:warning=Failed to generate release page: {e}");
-        write_fallback_release_page();
-    }
+    write_fallback_release_page();
 }
 
 fn gen_release_page() -> anyhow::Result<()> {
@@ -38,10 +35,10 @@ fn gen_release_page() -> anyhow::Result<()> {
 
     let client = reqwest::blocking::Client::builder()
         .timeout(std::time::Duration::from_secs(10))
-        .user_agent("cachyos-welcome-build")
+        .user_agent("guepardos-welcome-build")
         .build()?;
 
-    let rss_bytes = match client.get("https://cachyos.org/rss.xml").send() {
+    let rss_bytes = match client.get("https://GuepardOS.org/rss.xml").send() {
         Ok(resp) => resp.bytes()?,
         Err(e) => {
             eprintln!("cargo:warning=RSS fetch failed: {e}");
@@ -131,7 +128,7 @@ fn gen_release_page() -> anyhow::Result<()> {
 fn write_fallback_release_page() {
     let content = "<big>Latest Release</big>\n\n\
                    Release information is currently unavailable.\n\n\
-                   <a href=\"https://blog.cachyos.org\">Visit the CachyOS blog for the latest release notes</a>";
+                   <a href=\"https://blog.GuepardOS.org\">Visit the GuepardOS blog for the latest release notes</a>";
 
     fs::create_dir_all("data/pages/en").ok();
     if let Ok(mut file) = fs::File::create("data/pages/en/release") {
@@ -140,7 +137,7 @@ fn write_fallback_release_page() {
 }
 
 fn gen_config() -> anyhow::Result<()> {
-    let base_id = "org.cachyos.hello";
+    let base_id = "org.guepardos.welcome";
 
     let version = env::var("CARGO_PKG_VERSION")?;
 

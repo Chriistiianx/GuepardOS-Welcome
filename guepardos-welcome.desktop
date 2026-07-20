@@ -1,0 +1,14 @@
+[Desktop Entry]
+Name=GuepardOS Welcome
+Name[es]=Bienvenido a GuepardOS
+GenericName=Welcome Application
+GenericName[es]=Aplicación de bienvenida
+Comment=Configure and prepare your GuepardOS installation
+Comment[es]=Configura y prepara tu instalación de GuepardOS
+Exec=guepardos-welcome
+Icon=org.guepardos.welcome
+Terminal=false
+Type=Application
+Categories=System;Settings;
+StartupNotify=true
+StartupWMClass=org.guepardos.welcome

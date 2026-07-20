@@ -393,11 +393,11 @@ pub fn install_needed_packages(
 }
 
 pub fn rankmirrors(callback: RunCmdCallback) {
-    let _ = utils::run_cmd_terminal(callback, String::from("cachyos-rate-mirrors"), true);
+    let _ = utils::run_cmd_terminal(callback, String::from("GuepardOS-rate-mirrors"), true);
 }
 
 pub fn install_gaming(callback: RunCmdCallback, dialog_tx: Sender<DialogMessage>) {
-    const ALPM_PACKAGE_NAMES: [&str; 2] = ["cachyos-gaming-meta", "cachyos-gaming-applications"];
+    const ALPM_PACKAGE_NAMES: [&str; 2] = ["GuepardOS-gaming-meta", "GuepardOS-gaming-applications"];
     install_needed_packages(
         callback,
         &ALPM_PACKAGE_NAMES,

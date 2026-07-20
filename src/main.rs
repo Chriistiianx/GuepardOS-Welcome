@@ -10,6 +10,7 @@ mod embed_data;
 mod gresource;
 mod gui;
 mod installer;
+mod package_installer;
 mod kwin_dbus;
 mod localization;
 mod logger;
@@ -20,6 +21,9 @@ mod tweak;
 mod ui;
 mod utils;
 mod window;
+mod quick_actions;
+mod system_status;
+mod first_steps;
 
 use config::{APP_ID, PROFILE};
 use utils::{PacmanWrapper, check_regular_file, fix_path, read_json, write_json};
@@ -39,7 +43,7 @@ use serde_json::json;
 use tracing::{debug, error};
 use unic_langid::LanguageIdentifier;
 
-const RESPREFIX: &str = "/org/cachyos/hello";
+const RESPREFIX: &str = "/org/guepardos/welcome";
 
 static G_SAVE_JSON: LazyLock<Mutex<serde_json::Value>> = LazyLock::new(|| {
     let preferences = get_preferences();
@@ -106,8 +110,8 @@ fn main() {
         gresource::init().expect("Could not load gresource file.");
 
         // Set program name.
-        glib::set_program_name("org.cachyos.hello".into());
-        glib::set_application_name("org.cachyos.hello");
+        glib::set_program_name("org.guepardos.welcome".into());
+        glib::set_application_name("GuepardOS Welcome");
 
         let application = gtk::Application::new(
             Some(APP_ID),       // Application id

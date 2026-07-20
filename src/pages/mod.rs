@@ -158,16 +158,16 @@ fn create_apps_section() -> Option<gtk::Box> {
     label.set_text(&fl!("applications"));
 
     // Check first btn.
-    if utils::is_cachyos_pi_installed() {
-        let cachyos_pi = gtk::Button::with_label("CachyOS PackageInstaller");
-        cachyos_pi.connect_clicked(on_appbtn_clicked);
-        box_collection.pack_start(&cachyos_pi, true, true, 2);
+    if utils::is_GuepardOS_pi_installed() {
+        let GuepardOS_pi = gtk::Button::with_label("GuepardOS PackageInstaller");
+        GuepardOS_pi.connect_clicked(on_appbtn_clicked);
+        box_collection.pack_start(&GuepardOS_pi, true, true, 2);
     }
     // Check second btn.
-    if Path::new("/sbin/cachyos-kernel-manager").exists() {
-        let cachyos_km = gtk::Button::with_label("CachyOS Kernel Manager");
-        cachyos_km.connect_clicked(on_appbtn_clicked);
-        box_collection.pack_start(&cachyos_km, true, true, 2);
+    if Path::new("/sbin/GuepardOS-kernel-manager").exists() {
+        let GuepardOS_km = gtk::Button::with_label("GuepardOS Kernel Manager");
+        GuepardOS_km.connect_clicked(on_appbtn_clicked);
+        box_collection.pack_start(&GuepardOS_km, true, true, 2);
     }
 
     topbox.pack_start(&label, true, true, 5);
@@ -326,14 +326,14 @@ pub fn create_tweaks_page(builder: &Builder) {
 
 pub fn create_appbrowser_page(builder: &Builder) {
     let install: gtk::Button = builder.object("appBrowser").unwrap();
-    install.set_visible(utils::is_cachyos_pi_installed());
+    install.set_visible(utils::is_GuepardOS_pi_installed());
     install.set_label(&fl!("appbrowser-label"));
     install.connect_clicked(move |_| {
         // Spawn child process in separate thread.
         std::thread::spawn(move || {
             // Get executable path.
             // TODO(vnepogodin): prompt to install if it doesn't exist
-            let exec_path = utils::get_cachyos_pi_path().expect("cachyos-pi not found");
+            let exec_path = utils::get_GuepardOS_pi_path().expect("GuepardOS-pi not found");
             let exit_status = utils::spawn_detached(&exec_path).expect("Failed to spawn process");
             debug!("Exit status successfully? = {:?}", exit_status.success());
         });
@@ -383,10 +383,10 @@ fn on_clear_pkgcache_btn_clicked(_: &gtk::Button) {
 fn on_appbtn_clicked(button: &gtk::Button) {
     // Get button label.
     let name = button.label().unwrap();
-    let binname = if name == "CachyOS PackageInstaller" {
-        "cachyos-pi"
-    } else if name == "CachyOS Kernel Manager" {
-        "cachyos-kernel-manager"
+    let binname = if name == "GuepardOS PackageInstaller" {
+        "GuepardOS-pi"
+    } else if name == "GuepardOS Kernel Manager" {
+        "GuepardOS-kernel-manager"
     } else {
         ""
     };

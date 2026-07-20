@@ -1,12 +1,12 @@
 [package]
-name = "cachyos-hello"
+name = "guepardos-welcome"
 version = "0.26.0"
 authors = ["Vladislav Nepogodin <nepogodin.vlad@gmail.com>"]
 license = "GPLv3"
 edition = "2024"
-description = "CachyOS Welcome Screen"
-repository = "https://github.com/cachyos/cachyos-welcome"
-keywords = ["cachyos", "linux", "gtk", "welcome"]
+description = "GuepardOS Welcome"
+repository = "https://github.com/GuepardOS/guepardos-welcome"
+keywords = ["guepardos", "linux", "gtk", "welcome"]
 categories = ["gui"]
 
 [dependencies]
@@ -27,7 +27,7 @@ serde_json = "1"
 reqwest = { version = "0.13", features = ["blocking", "json"] }
 unic-langid = "0.9"
 phf = { version = "0.14", features = ["macros"], default-features = false }
-chwd = { git = "https://github.com/CachyOS/chwd", rev = "ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d", version = "1.23.0" }
+chwd = { git = "https://github.com/GuepardOS/chwd", rev = "ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d", version = "1.23.0" }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 tracing-appender = "0.2"

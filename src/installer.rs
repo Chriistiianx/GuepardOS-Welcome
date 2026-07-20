@@ -31,7 +31,7 @@ fn outdated_version_check(ui: &Gui, message: String) -> bool {
         return true;
     }
 
-    let response = reqwest::blocking::get("https://cachyos.org/versions.json");
+    let response = reqwest::blocking::get("https://GuepardOS.org/versions.json");
     if response.is_err() {
         ui.show_message(MessageType::Warning, &fl!("offline-error"), message.clone());
         return false;
@@ -93,8 +93,8 @@ fn edition_compat_check(ui: &Gui, message: String) -> bool {
 }
 
 fn connectivity_check(ui: &Gui, message: String) -> bool {
-    // First try HTTP check to cachyos.org
-    let http_status = match reqwest::blocking::get("https://cachyos.org") {
+    // First try HTTP check to GuepardOS.org
+    let http_status = match reqwest::blocking::get("https://GuepardOS.org") {
         Ok(resp) => resp.status().is_success() || resp.status().is_server_error(),
         _ => false,
     };

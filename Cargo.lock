@@ -281,7 +281,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fc652a48c352aef3ea3aed32080501cf3ef6ed5da78602a020c991775b0aff04"
 
 [[package]]
-name = "cachyos-hello"
+name = "guepardos-welcome"
 version = "0.26.0"
 dependencies = [
  "alpm",
@@ -409,7 +409,7 @@ dependencies = [
 [[package]]
 name = "chwd"
 version = "1.23.0"
-source = "git+https://github.com/CachyOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
+source = "git+https://github.com/GuepardOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
 dependencies = [
  "anyhow",
  "clap",
@@ -1892,7 +1892,7 @@ dependencies = [
 [[package]]
 name = "libpci"
 version = "0.2.0"
-source = "git+https://github.com/CachyOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
+source = "git+https://github.com/GuepardOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
 dependencies = [
  "libc",
  "libpci-c-sys",
@@ -1901,7 +1901,7 @@ dependencies = [
 [[package]]
 name = "libpci-c-sys"
 version = "0.2.0"
-source = "git+https://github.com/CachyOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
+source = "git+https://github.com/GuepardOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
 dependencies = [
  "bindgen",
  "cc",
@@ -1911,7 +1911,7 @@ dependencies = [
 [[package]]
 name = "libusb"
 version = "0.2.0"
-source = "git+https://github.com/CachyOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
+source = "git+https://github.com/GuepardOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
 dependencies = [
  "libc",
  "libusb-c-sys",
@@ -1920,7 +1920,7 @@ dependencies = [
 [[package]]
 name = "libusb-c-sys"
 version = "0.2.0"
-source = "git+https://github.com/CachyOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
+source = "git+https://github.com/GuepardOS/chwd?rev=ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d#ec804eb0c062cb4bab8cf4a6934255a6ac8caa4d"
 dependencies = [
  "bindgen",
  "libc",
