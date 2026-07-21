@@ -2,5 +2,6 @@
 <gresources>
   <gresource prefix="/org/guepardos/welcome">
     <file compressed="true">ui/style.css</file>
+    <file compressed="true" alias="icons/org.guepardos.welcome.svg">icons/org.guepardos.welcome.svg</file>
   </gresource>
 </gresources>

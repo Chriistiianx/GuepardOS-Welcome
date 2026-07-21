@@ -9,6 +9,9 @@ fn main() {
     for i in fs::read_dir("ui").unwrap() {
         println!("cargo:rerun-if-changed={}", i.unwrap().path().display());
     }
+    for i in fs::read_dir("icons").unwrap() {
+        println!("cargo:rerun-if-changed={}", i.unwrap().path().display());
+    }
 
     let out_dir = env::var("OUT_DIR").unwrap();
 

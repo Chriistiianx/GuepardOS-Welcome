@@ -11,7 +11,7 @@ pub const QUICK_ACTIONS: &[QuickAction] = &[
     QuickAction {
         id: "settings",
         label: "Abrir Ajustes",
-        commands: &[&["systemsettings"]],
+        commands: &[&["systemsettings"], &["systemsettings6"], &["systemsettings5"]],
     },
     QuickAction {
         id: "updates",
@@ -28,16 +28,8 @@ pub const QUICK_ACTIONS: &[QuickAction] = &[
         label: "Información del sistema",
         commands: &[&["kinfocenter"], &["systemsettings", "kcm_about-distro"]],
     },
-    QuickAction {
-        id: "display",
-        label: "Configurar pantallas",
-        commands: &[&["systemsettings", "kcm_kscreen"]],
-    },
-    QuickAction {
-        id: "network",
-        label: "Configurar red",
-        commands: &[&["systemsettings", "kcm_networkmanagement"]],
-    },
+    QuickAction { id: "display", label: "Configurar pantallas", commands: &[&["systemsettings", "kcm_kscreen"], &["kscreen-doctor"]] },
+    QuickAction { id: "network", label: "Configurar red", commands: &[&["systemsettings", "kcm_networkmanagement"], &["nm-connection-editor"]] },
 ];
 
 pub fn run_action(action: &QuickAction) -> Result<(), String> {

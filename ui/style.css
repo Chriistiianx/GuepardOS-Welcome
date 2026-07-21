@@ -1,82 +1,13 @@
-window,
-.welcome-root {
-  background: #0d0d12;
-  color: #f5f5f5;
-}
-
-headerbar {
-  background: #171722;
-  color: #f5f5f5;
-  border-color: #2a2040;
-}
-
-.hero-title {
-  color: #f5f5f5;
-  font-weight: 700;
-}
-
-.hero-subtitle {
-  color: #a0a0b0;
-}
-
-.status-card,
-.profile-card,
-.quick-card,
-.steps-card,
-.install-row {
-  background: #171722;
-  border: 1px solid #32224a;
-  border-radius: 14px;
-}
-
-.status-pill {
-  background: #1f1f2b;
-  border: 1px solid #32224a;
-  border-radius: 999px;
-  color: #f5f5f5;
-  padding: 8px 12px;
-}
-
-.muted {
-  color: #a0a0b0;
-}
-
-button {
-  background: #1f1f2b;
-  border: 1px solid #3a2955;
-  border-radius: 10px;
-  color: #f5f5f5;
-  padding: 8px 12px;
-}
-
-button:hover {
-  border-color: #b27bff;
-  color: #ffffff;
-}
-
-button.suggested-action {
-  background: #9b5cff;
-  border-color: #9b5cff;
-  color: #ffffff;
-}
-
-button.suggested-action:hover {
-  background: #b27bff;
-  border-color: #b27bff;
-}
-
-switch slider {
-  background: #f5f5f5;
-}
-
-switch:checked {
-  background: #34d399;
-}
-
-checkbutton {
-  color: #f5f5f5;
-}
-
-progressbar progress {
-  background: #34d399;
-}
+window, .welcome-root { background: #0D0D12; color: #F5F5F5; }
+headerbar { background: #171722; color: #F5F5F5; border-color: #302044; }
+.content { background: #0D0D12; }
+.hero { padding: 8px 4px; }
+.hero-title { color: #F5F5F5; } .hero-subtitle, .muted { color: #A0A0B0; }
+.status-card, .profile-card { background: #171722; border: 1px solid #302044; border-radius: 14px; padding: 18px; }
+.status-tile, .install-row, .step-row { background: #1F1F2B; border: 1px solid #302044; border-radius: 10px; padding: 10px; }
+.status-value { color: #F5F5F5; font-weight: 700; } .status-good { color: #34D399; } .status-warning { color: #FBBF24; } .status-neutral { color: #A0A0B0; }
+.system-summary { color: #F5F5F5; font-weight: 700; padding-top: 4px; }
+.tag, .chips { color: #B27BFF; } .tag { background: #1F1F2B; border-radius: 8px; padding: 4px 8px; }
+button { background: #1F1F2B; border: 1px solid #3A2955; border-radius: 9px; color: #F5F5F5; padding: 7px 11px; }
+button:hover { border-color: #B27BFF; color: #FFFFFF; } button.suggested-action { background: #9B5CFF; border-color: #9B5CFF; color: white; } button.suggested-action:hover { background: #B27BFF; }
+switch:checked { background: #34D399; } progressbar progress { background: #34D399; }

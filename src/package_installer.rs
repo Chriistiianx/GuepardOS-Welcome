@@ -13,6 +13,7 @@ pub enum PackageSource {
 pub struct PackageItem {
     pub id: &'static str,
     pub label: &'static str,
+    pub description: &'static str,
     pub packages: &'static [&'static str],
     pub source: PackageSource,
 }
@@ -26,31 +27,31 @@ pub struct PackageProfile {
 }
 
 pub const ESSENTIALS: &[PackageItem] = &[
-    PackageItem { id: "firefox", label: "Firefox", packages: &["firefox"], source: PackageSource::Pacman },
-    PackageItem { id: "vlc", label: "VLC", packages: &["vlc"], source: PackageSource::Pacman },
-    PackageItem { id: "libreoffice", label: "LibreOffice", packages: &["libreoffice-fresh"], source: PackageSource::Pacman },
-    PackageItem { id: "7zip", label: "7-Zip", packages: &["7zip"], source: PackageSource::Pacman },
-    PackageItem { id: "flatpak", label: "Flatpak", packages: &["flatpak"], source: PackageSource::Pacman },
+    PackageItem { id: "firefox", label: "Firefox", description: "Navegador web rápido y privado.", packages: &["firefox"], source: PackageSource::Pacman },
+    PackageItem { id: "vlc", label: "VLC", description: "Reproductor multimedia versátil.", packages: &["vlc"], source: PackageSource::Pacman },
+    PackageItem { id: "libreoffice", label: "LibreOffice", description: "Suite de oficina completa.", packages: &["libreoffice-fresh"], source: PackageSource::Pacman },
+    PackageItem { id: "7zip", label: "7-Zip", description: "Utilidades de compresión.", packages: &["7zip"], source: PackageSource::Pacman },
+    PackageItem { id: "flatpak", label: "Flatpak", description: "Aplicaciones aisladas y actualizadas.", packages: &["flatpak"], source: PackageSource::Pacman },
 ];
 
 pub const DEVELOPMENT: &[PackageItem] = &[
-    PackageItem { id: "git", label: "Git", packages: &["git"], source: PackageSource::Pacman },
-    PackageItem { id: "vscodium", label: "VSCodium", packages: &["vscodium"], source: PackageSource::Unavailable },
-    PackageItem { id: "dotnet", label: ".NET SDK", packages: &["dotnet-sdk"], source: PackageSource::Pacman },
-    PackageItem { id: "python", label: "Python", packages: &["python"], source: PackageSource::Pacman },
-    PackageItem { id: "nodejs", label: "Node.js", packages: &["nodejs", "npm"], source: PackageSource::Pacman },
-    PackageItem { id: "java", label: "Java", packages: &["jdk-openjdk"], source: PackageSource::Pacman },
-    PackageItem { id: "docker", label: "Docker", packages: &["docker", "docker-compose"], source: PackageSource::Pacman },
-    PackageItem { id: "dbeaver", label: "DBeaver", packages: &["dbeaver"], source: PackageSource::Pacman },
+    PackageItem { id: "git", label: "Git", description: "Control de versiones distribuido.", packages: &["git"], source: PackageSource::Pacman },
+    PackageItem { id: "vscodium", label: "VSCodium", description: "Editor de código abierto.", packages: &["vscodium"], source: PackageSource::Pacman },
+    PackageItem { id: "dotnet", label: ".NET SDK", description: "Herramientas para .NET.", packages: &["dotnet-sdk"], source: PackageSource::Pacman },
+    PackageItem { id: "python", label: "Python", description: "Lenguaje y entorno Python.", packages: &["python"], source: PackageSource::Pacman },
+    PackageItem { id: "nodejs", label: "Node.js", description: "Runtime y gestor npm.", packages: &["nodejs", "npm"], source: PackageSource::Pacman },
+    PackageItem { id: "java", label: "Java", description: "Kit de desarrollo OpenJDK.", packages: &["jdk-openjdk"], source: PackageSource::Pacman },
+    PackageItem { id: "docker", label: "Docker", description: "Contenedores para desarrollo.", packages: &["docker", "docker-compose"], source: PackageSource::Pacman },
+    PackageItem { id: "dbeaver", label: "DBeaver", description: "Cliente de bases de datos.", packages: &["dbeaver"], source: PackageSource::Pacman },
 ];
 
 pub const GAMING: &[PackageItem] = &[
-    PackageItem { id: "steam", label: "Steam", packages: &["steam"], source: PackageSource::Pacman },
-    PackageItem { id: "heroic", label: "Heroic Games Launcher", packages: &["heroic-games-launcher"], source: PackageSource::Pacman },
-    PackageItem { id: "lutris", label: "Lutris", packages: &["lutris"], source: PackageSource::Pacman },
-    PackageItem { id: "mangohud", label: "MangoHud", packages: &["mangohud"], source: PackageSource::Pacman },
-    PackageItem { id: "gamemode", label: "GameMode", packages: &["gamemode"], source: PackageSource::Pacman },
-    PackageItem { id: "gamescope", label: "Gamescope", packages: &["gamescope"], source: PackageSource::Pacman },
+    PackageItem { id: "steam", label: "Steam", description: "Plataforma de juegos para Linux.", packages: &["steam"], source: PackageSource::Pacman },
+    PackageItem { id: "heroic", label: "Heroic Games Launcher", description: "Bibliotecas de Epic y GOG.", packages: &["heroic-games-launcher"], source: PackageSource::Pacman },
+    PackageItem { id: "lutris", label: "Lutris", description: "Gestor de juegos abiertos.", packages: &["lutris"], source: PackageSource::Pacman },
+    PackageItem { id: "mangohud", label: "MangoHud", description: "Métricas de rendimiento.", packages: &["mangohud"], source: PackageSource::Pacman },
+    PackageItem { id: "gamemode", label: "GameMode", description: "Optimiza recursos al jugar.", packages: &["gamemode"], source: PackageSource::Pacman },
+    PackageItem { id: "gamescope", label: "Gamescope", description: "Compositor para juegos.", packages: &["gamescope"], source: PackageSource::Pacman },
 ];
 
 pub const PROFILES: &[PackageProfile] = &[

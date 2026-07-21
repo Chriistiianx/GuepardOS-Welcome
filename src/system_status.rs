@@ -7,6 +7,11 @@ pub struct SystemStatus {
     pub gpu: String,
     pub session: String,
     pub flatpak: String,
+    pub firewall: String,
+    pub snapshots: String,
+    pub bluetooth: String,
+    pub disk: String,
+    pub reboot_required: bool,
 }
 
 pub fn collect() -> SystemStatus {
@@ -16,67 +21,77 @@ pub fn collect() -> SystemStatus {
         gpu: detect_gpu(),
         session: std::env::var("XDG_SESSION_TYPE")
             .map(|v| if v.eq_ignore_ascii_case("wayland") { "Wayland" } else { "X11" }.into())
-            .unwrap_or_else(|_| "Desconocida".into()),
-        flatpak: if command_exists("flatpak") { "Instalado".into() } else { "No instalado".into() },
+            .unwrap_or_else(|_| "No disponible".into()),
+        flatpak: if command_exists("flatpak") { "Instalado".into() } else { "No está instalado".into() },
+        firewall: service_status(&["firewalld", "ufw"]),
+        snapshots: snapshot_status(),
+        bluetooth: if command_exists("bluetoothctl") || std::path::Path::new("/sys/class/bluetooth").exists() {
+            "Disponible".into()
+        } else { "No disponible".into() },
+        disk: disk_free(),
+        reboot_required: std::path::Path::new("/run/reboot-required").exists(),
     }
 }
 
-pub fn command_exists(command: &str) -> bool {
-    which::which(command).is_ok()
-}
+pub fn command_exists(command: &str) -> bool { which::which(command).is_ok() }
 
-fn has_internet() -> bool {
-    Exec::cmd("ping")
-        .args(&["-c", "1", "-W", "2", "1.1.1.1"])
-        .stdout(Redirection::Null)
-        .stderr(Redirection::Null)
-        .join()
-        .is_ok_and(|status| status.success())
+pub fn has_internet() -> bool {
+    Exec::cmd("ping").args(&["-c", "1", "-W", "2", "1.1.1.1"])
+        .stdout(Redirection::Null).stderr(Redirection::Null).join().is_ok_and(|s| s.success())
 }
 
 fn pending_updates() -> String {
-    if command_exists("checkupdates") {
-        return match Exec::cmd("checkupdates").stdout(Redirection::Pipe).capture() {
-            Ok(out) => {
-                let count = out.stdout_str().lines().filter(|line| !line.trim().is_empty()).count();
-                if count == 0 { "Sistema al día".into() } else { format!("{count} pendientes") }
-            },
-            Err(_) => "No disponible".into(),
-        };
+    if !command_exists("checkupdates") { return "No disponible".into(); }
+    match Exec::cmd("checkupdates").stdout(Redirection::Pipe).stderr(Redirection::Null).capture() {
+        Ok(out) => {
+            let count = out.stdout_str().lines().filter(|line| !line.trim().is_empty()).count();
+            if count == 0 { "Sistema al día".into() } else { format!("{count} disponibles") }
+        }
+        Err(_) => "No disponible".into(),
     }
-    "No disponible".into()
 }
 
-fn detect_gpu() -> String {
-    let lspci = Exec::cmd("lspci").stdout(Redirection::Pipe).capture();
-    let Ok(output) = lspci else {
-        return "Desconocida".into();
-    };
-    let text = output.stdout_str().to_lowercase();
-    if text.contains("nvidia") {
-        "NVIDIA".into()
-    } else if text.contains("amd") || text.contains("advanced micro devices") || text.contains("radeon") {
-        "AMD".into()
-    } else if text.contains("intel") {
-        "Intel".into()
-    } else {
-        "Desconocida".into()
+pub fn detect_gpu() -> String {
+    let output = Exec::cmd("lspci").stdout(Redirection::Pipe).stderr(Redirection::Null).capture();
+    let Ok(output) = output else { return "GPU no detectada".into() };
+    let line = output.stdout_str().lines().find(|line| {
+        let lower = line.to_lowercase();
+        lower.contains("vga compatible controller") || lower.contains("3d controller") || lower.contains("display controller")
+    });
+    line.map(|line| line.splitn(3, ':').nth(2).unwrap_or(line).trim().to_owned())
+        .unwrap_or_else(|| "GPU no detectada".into())
+}
+
+fn service_status(names: &[&str]) -> String {
+    if !command_exists("systemctl") { return "Desconocido".into(); }
+    for name in names {
+        if Exec::cmd("systemctl").args(&["is-active", "--quiet", name]).join().is_ok_and(|s| s.success()) {
+            return "Activo".into();
+        }
+    }
+    "No detectado".into()
+}
+
+fn snapshot_status() -> String {
+    if command_exists("timeshift") || command_exists("snapper") || std::path::Path::new("/.snapshots").exists() {
+        "Configurados".into()
+    } else { "No configurados".into() }
+}
+
+fn disk_free() -> String {
+    match Exec::cmd("df").args(&["-h", "/"]).stdout(Redirection::Pipe).capture() {
+        Ok(out) => out.stdout_str().lines().nth(1).and_then(|line| line.split_whitespace().nth(3))
+            .map(|free| format!("{free} libres")).unwrap_or_else(|| "No disponible".into()),
+        Err(_) => "No disponible".into(),
     }
 }
 
 pub fn guepardos_version() -> Option<String> {
     for path in ["/etc/guepardos-release", "/etc/os-release", "/etc/lsb-release"] {
         if let Ok(content) = std::fs::read_to_string(path) {
-            if path.ends_with("guepardos-release") {
-                let value = content.trim();
-                if !value.is_empty() {
-                    return Some(value.to_owned());
-                }
-            }
-            for line in content.lines() {
-                if let Some(value) = line.strip_prefix("PRETTY_NAME=") {
-                    return Some(value.trim_matches('"').to_owned());
-                }
+            if path.ends_with("guepardos-release") && !content.trim().is_empty() { return Some(content.trim().to_owned()); }
+            if let Some(value) = content.lines().find_map(|line| line.strip_prefix("VERSION_ID=")) {
+                return Some(value.trim_matches('"').to_owned());
             }
         }
     }

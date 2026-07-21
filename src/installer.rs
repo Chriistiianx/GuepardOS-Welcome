@@ -1,6 +1,6 @@
 use crate::gui::Gui;
 use crate::ui::{MessageType, UI};
-use crate::{G_HELLO_WINDOW, check_regular_file, fl};
+use crate::{with_hello_window, check_regular_file, fl};
 
 use std::fs;
 use std::io::{BufRead, BufReader};
@@ -126,10 +126,9 @@ fn connectivity_check(ui: &Gui, message: String) -> bool {
 }
 
 pub fn launch_installer(message: String) {
-    // Spawn child process in separate thread.
-    std::thread::spawn(move || {
-        let window_ref = &G_HELLO_WINDOW.get().unwrap().window;
-        let builder = &G_HELLO_WINDOW.get().unwrap().builder;
+    with_hello_window(|hello_window| {
+        let window_ref = &hello_window.window;
+        let builder = &hello_window.builder;
 
         let install_btn: gtk::Button = builder.object("install").unwrap();
         install_btn.set_sensitive(false);

@@ -1,477 +1,111 @@
 use crate::config::{APP_ID, VERSION};
-use crate::{RESPREFIX, check_regular_file, first_steps, package_installer, quick_actions, system_status, utils};
-
-use std::cell::RefCell;
-use std::fs;
-use std::path::Path;
-use std::rc::Rc;
-
-use gtk::gdk_pixbuf::Pixbuf;
-use gtk::glib::GString;
-use gtk::prelude::*;
+use crate::{RESPREFIX, check_regular_file, first_steps, package_installer, quick_actions, system_status, utils, with_hello_window};
+use std::{cell::RefCell, fs, path::Path, rc::Rc};
 use gtk::{Builder, HeaderBar, Window, glib};
+use gtk::prelude::*;
 use tracing::error;
 
 #[derive(Clone, Debug)]
-pub struct HelloWindow {
-    pub builder: gtk::Builder,
-    pub window: gtk::Window,
-    preferences: serde_json::Value,
-}
-
-// SAFETY: GTK UI access is kept on the GTK main thread. The global is initialized
-// once during startup and then only used from GTK signal callbacks.
-unsafe impl Send for HelloWindow {}
-unsafe impl Sync for HelloWindow {}
+pub struct HelloWindow { pub builder: gtk::Builder, pub window: gtk::Window, preferences: serde_json::Value }
 
 impl HelloWindow {
-    #[expect(clippy::too_many_lines, reason = "GTK window composition")]
-    pub fn new(
-        application: &gtk::Application,
-        preferences: serde_json::Value,
-        _best_locale: &str,
-    ) -> Self {
-        if let Some(icon_theme) = gtk::IconTheme::default() {
-            icon_theme.add_resource_path(&format!("{RESPREFIX}/data/img"));
-        }
-
+    pub fn new(application: &gtk::Application, preferences: serde_json::Value, _best_locale: &str) -> Self {
         let provider = gtk::CssProvider::new();
         provider.load_from_resource(&format!("{RESPREFIX}/ui/style.css"));
-        gtk::StyleContext::add_provider_for_screen(
-            &gtk::gdk::Screen::default().expect("Error initializing gtk css provider."),
-            &provider,
-            gtk::STYLE_PROVIDER_PRIORITY_APPLICATION,
-        );
-
+        gtk::StyleContext::add_provider_for_screen(&gtk::gdk::Screen::default().expect("Sin pantalla GTK"), &provider, gtk::STYLE_PROVIDER_PRIORITY_APPLICATION);
         let builder = Builder::new();
-        let main_window = gtk::ApplicationWindow::new(application);
-        main_window.set_title("GuepardOS Welcome");
-        main_window.set_default_size(1100, 760);
-        main_window.set_position(gtk::WindowPosition::Center);
-        main_window.style_context().add_class("welcome-root");
-
-        let header = HeaderBar::new();
-        header.set_title(Some("GuepardOS Welcome"));
-        header.set_subtitle(Some("Basado en Arch Linux"));
-        header.set_show_close_button(true);
-        let about_btn = gtk::Button::from_icon_name(Some("help-about"), gtk::IconSize::Button);
-        about_btn.set_tooltip_text(Some("Acerca de GuepardOS Welcome"));
-        about_btn.connect_clicked(|_| {
-            if let Some(window) = crate::G_HELLO_WINDOW.get() {
-                window.show_about_dialog();
-            }
-        });
-        header.pack_end(&about_btn);
-        main_window.set_titlebar(Some(&header));
-
-        let scrolled = gtk::ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE);
-        scrolled.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic);
-        let root = gtk::Box::new(gtk::Orientation::Vertical, 24);
-        root.set_margin_top(28);
-        root.set_margin_bottom(28);
-        root.set_margin_start(28);
-        root.set_margin_end(28);
-        root.style_context().add_class("welcome-root");
-        scrolled.add(&root);
-        main_window.add(&scrolled);
-
-        root.pack_start(&create_hero(&preferences), false, false, 0);
+        let main = gtk::ApplicationWindow::new(application);
+        main.set_title("GuepardOS Welcome"); main.set_default_size(1100, 720); main.set_position(gtk::WindowPosition::Center);
+        main.style_context().add_class("welcome-root");
+        let header = HeaderBar::new(); header.set_title(Some("GuepardOS Welcome")); header.set_subtitle(Some(VERSION)); header.set_show_close_button(true);
+        let about = icon_button("dialog-information", "Acerca de GuepardOS Welcome");
+        about.connect_clicked(|_| with_hello_window(HelloWindow::show_about_dialog));
+        header.pack_end(&about); main.set_titlebar(Some(&header));
+        let scroll = gtk::ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE);
+        scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic); scroll.set_propagate_natural_height(true);
+        let root = gtk::Box::new(gtk::Orientation::Vertical, 22); root.set_margin_top(24); root.set_margin_bottom(24); root.set_margin_start(28); root.set_margin_end(28); root.style_context().add_class("content");
+        scroll.add(&root); main.add(&scroll);
+        let parent = main.clone().upcast::<Window>();
+        root.pack_start(&create_hero(), false, false, 0);
         root.pack_start(&create_status_card(), false, false, 0);
-        root.pack_start(&create_profiles(&main_window.clone().upcast::<Window>()), false, false, 0);
-        root.pack_start(&create_quick_actions(&preferences, &main_window.clone().upcast::<Window>()), false, false, 0);
-        root.pack_start(&create_first_steps(&preferences), false, false, 0);
+        root.pack_start(&create_intentions(&parent), false, false, 0);
+        root.pack_start(&create_profiles(&parent), false, false, 0);
+        root.pack_start(&create_recommended(&parent), false, false, 0);
+        root.pack_start(&create_quick_actions(&preferences, &parent), false, false, 0);
+        root.pack_start(&create_first_steps(&preferences, &parent), false, false, 0);
         root.pack_start(&create_footer(&preferences), false, false, 0);
-
-        let window = main_window.upcast::<Window>();
-        window.show_all();
-
-        HelloWindow { builder, window, preferences }
+        let window = main.upcast::<Window>(); window.show_all();
+        Self { builder, window, preferences }
     }
-
     pub fn show_about_dialog(&self) {
-        let logo_path = format!("/usr/share/icons/hicolor/scalable/apps/{APP_ID}.svg");
-        let dialog = gtk::AboutDialog::builder()
-            .transient_for(&self.window)
-            .modal(true)
-            .program_name(GString::from_string_unchecked("GuepardOS Welcome".to_owned()))
-            .comments(GString::from_string_unchecked(
-                "Aplicación de bienvenida para preparar GuepardOS.".to_owned(),
-            ))
-            .version(VERSION)
-            .authors(vec!["GuepardOS team".to_owned(), "Vladislav Nepogodin".to_owned()])
-            .translator_credits("translator-credits")
-            .copyright("2021-2026 GuepardOS team")
-            .license_type(gtk::License::Gpl30)
-            .website("https://github.com/GuepardOS/guepardos-welcome")
-            .website_label("GitHub")
-            .build();
-
-        if let Ok(logo) = Pixbuf::from_file(logo_path) {
-            dialog.set_logo(Some(&logo));
-        }
-
-        dialog.connect_response(|dialog, _| dialog.close());
-        dialog.present();
+        let dialog = gtk::AboutDialog::builder().transient_for(&self.window).modal(true).program_name("GuepardOS Welcome").comments("Aplicación de bienvenida privada y sin telemetría.").version(VERSION).authors(vec!["GuepardOS team".into()]).license_type(gtk::License::Gpl30).website("https://github.com/GuepardOS/guepardos-welcome").build();
+        dialog.connect_response(|d, _| d.close()); dialog.present();
     }
-
     pub fn switch_locale(&self, _use_locale: &str) {}
-
-    pub fn set_autostart(&self, autostart: bool) {
-        let autostart_path = utils::fix_path(self.preferences["autostart_path"].as_str().unwrap());
-        let desktop_path = self.preferences["desktop_path"].as_str().unwrap().to_owned();
-        let config_dir = Path::new(&autostart_path).parent().unwrap();
-        if !config_dir.exists() && let Err(e) = fs::create_dir_all(config_dir) {
-            error!("Could not create autostart directory: {e}");
-            return;
-        }
-        if autostart && !check_regular_file(&autostart_path) {
-            if let Err(e) = std::os::unix::fs::symlink(desktop_path, &autostart_path) {
-                error!("Could not enable autostart: {e}");
-            }
-        } else if !autostart && check_regular_file(&autostart_path)
-            && let Err(e) = std::fs::remove_file(&autostart_path)
-        {
-            error!("Could not disable autostart: {e}");
-        }
+    pub fn set_autostart(&self, enabled: bool) {
+        let path = utils::fix_path(self.preferences["autostart_path"].as_str().unwrap()); let desktop = self.preferences["desktop_path"].as_str().unwrap();
+        if let Some(dir) = Path::new(&path).parent() { if !dir.exists() { let _ = fs::create_dir_all(dir); } }
+        if enabled && !check_regular_file(&path) { if let Err(e) = std::os::unix::fs::symlink(desktop, &path) { error!("No se pudo activar autoinicio: {e}"); } }
+        if !enabled && check_regular_file(&path) { let _ = fs::remove_file(path); }
     }
-
-    pub fn open_uri(&self, uri: &str) {
-        if let Err(uri_err) = gtk::show_uri_on_window(Some(&self.window), uri, 0) {
-            error!("Failed to open uri: {uri_err}");
-        }
-    }
-
+    pub fn open_uri(&self, uri: &str) { if let Err(e) = gtk::show_uri_on_window(Some(&self.window), uri, 0) { error!("No se pudo abrir URI: {e}"); } }
     pub fn set_stack_child_visible(&self, _child_name: &str) {}
-
-    pub fn get_preferences(&self, entry: &str) -> &serde_json::Value {
-        &self.preferences[entry]
-    }
+    pub fn get_preferences(&self, entry: &str) -> &serde_json::Value { &self.preferences[entry] }
 }
 
-fn create_hero(preferences: &serde_json::Value) -> gtk::Box {
-    let hero = gtk::Box::new(gtk::Orientation::Horizontal, 18);
-    hero.set_valign(gtk::Align::Center);
-
-    let logo = gtk::Image::new();
-    let logo_path = format!("{}/org.guepardos.welcome.svg", preferences["logo_path"].as_str().unwrap());
-    if Path::new(&logo_path).exists() {
-        logo.set_from_file(Some(&logo_path));
-    } else {
-        logo.set_from_icon_name(Some("computer-symbolic"), gtk::IconSize::Dialog);
-        logo.set_tooltip_text(Some("Logo temporal de GuepardOS Welcome"));
-    }
-    logo.set_pixel_size(88);
-    hero.pack_start(&logo, false, false, 0);
-
-    let text = gtk::Box::new(gtk::Orientation::Vertical, 6);
-    let title = label("Bienvenido a GuepardOS", 0.0, Some("hero-title"));
-    title.set_markup("<span size=\"xx-large\" weight=\"bold\">Bienvenido a GuepardOS</span>");
-    let subtitle = label("Tu sistema, preparado a tu manera", 0.0, Some("hero-subtitle"));
-    subtitle.set_markup("<span size=\"large\">Tu sistema, preparado a tu manera</span>");
-    let release = system_status::guepardos_version()
-        .map(|version| format!("Basado en Arch Linux · Rolling Release · {version}"))
-        .unwrap_or_else(|| "Basado en Arch Linux · Rolling Release".to_owned());
-    text.pack_start(&title, false, false, 0);
-    text.pack_start(&subtitle, false, false, 0);
-    text.pack_start(&label(&release, 0.0, Some("muted")), false, false, 0);
-    hero.pack_start(&text, true, true, 0);
-    hero
+fn create_hero() -> gtk::Box {
+    let hero = gtk::Box::new(gtk::Orientation::Horizontal, 18); hero.style_context().add_class("hero");
+    let logo = gtk::Image::from_resource(&format!("{RESPREFIX}/icons/org.guepardos.welcome.svg")); logo.set_pixel_size(104); logo.set_tooltip_text(Some("Logo de GuepardOS")); hero.pack_start(&logo, false, false, 0);
+    let text = gtk::Box::new(gtk::Orientation::Vertical, 5);
+    let title = label("Bienvenido a GuepardOS", 0.0, Some("hero-title")); title.set_markup("<span size=\"xx-large\" weight=\"bold\">Bienvenido a GuepardOS</span>");
+    let sub = label("Tu sistema, preparado a tu manera", 0.0, Some("hero-subtitle")); sub.set_markup("<span size=\"large\">Tu sistema, preparado a tu manera</span>");
+    text.pack_start(&title, false, false, 0); text.pack_start(&sub, false, false, 0); text.pack_start(&label("Basado en Arch Linux · Rolling Release", 0.0, Some("muted")), false, false, 0);
+    if let Some(version) = system_status::guepardos_version() { text.pack_start(&label(&format!("GuepardOS {version}"), 0.0, Some("tag")), false, false, 0); }
+    hero.pack_start(&text, true, true, 0); hero
 }
 
 fn create_status_card() -> gtk::Box {
-    let card = card("Estado inicial del sistema");
-    let grid = gtk::Grid::new();
-    grid.set_column_spacing(12);
-    grid.set_row_spacing(12);
-    card.pack_start(&grid, false, false, 0);
+    let card = card("Estado de GuepardOS"); card.pack_start(&label("Comprobamos el equipo en segundo plano. No se envía información fuera de tu dispositivo.", 0.0, Some("muted")), false, false, 0);
+    let grid = gtk::Grid::new(); grid.set_column_spacing(12); grid.set_row_spacing(12); card.pack_start(&grid, false, false, 0);
+    let definitions = [("internet", "network-wireless", "Internet"), ("updates", "system-software-update", "Actualizaciones"), ("gpu", "video-display", "GPU"), ("session", "preferences-desktop", "Sesión gráfica"), ("flatpak", "system-software-install", "Flatpak"), ("firewall", "security-high", "Firewall"), ("snapshots", "drive-harddisk", "Snapshots"), ("bluetooth", "bluetooth", "Bluetooth")];
+    let values = Rc::new(definitions.iter().map(|(key, icon, name)| { let (tile, value) = status_tile(icon, name, "Comprobando…"); grid.attach(&tile, (values_index(key, &definitions) % 3) as i32, (values_index(key, &definitions) / 3) as i32, 1, 1); ((*key).to_owned(), value) }).collect::<Vec<_>>());
+    let summary = label("Comprobando el estado general…", 0.0, Some("system-summary")); card.pack_start(&summary, false, false, 0);
+    let (tx, rx) = async_channel::bounded(1); std::thread::spawn(move || { let _ = tx.send_blocking(system_status::collect()); });
+    glib::MainContext::default().spawn_local(async move { if let Ok(s) = rx.recv().await { for (key, tile) in values.iter() { let value = match key.as_str() { "internet" => &s.internet, "updates" => &s.updates, "gpu" => &s.gpu, "session" => &s.session, "flatpak" => &s.flatpak, "firewall" => &s.firewall, "snapshots" => &s.snapshots, _ => &s.bluetooth }; tile.set_text(value); tile.style_context().add_class(status_class(value)); }
+        let mut notices = Vec::new(); if s.updates.contains("disponibles") { notices.push("Hay actualizaciones disponibles"); } if s.internet != "Conectado" { notices.push("Conecta Internet para instalar o actualizar"); } if s.reboot_required { notices.push("Se recomienda reiniciar"); } if notices.is_empty() { summary.set_text("Todo está listo"); } else { summary.set_text(&format!("{} recomendaciones pendientes · {}", notices.len(), notices.join(" · "))); } } }); card
+}
+fn values_index(key: &str, definitions: &[(&str, &str, &str)]) -> usize { definitions.iter().position(|(id, _, _)| *id == key).unwrap_or(0) }
 
-    let labels = Rc::new(vec![
-        ("internet", status_pill("Internet", "Comprobando...")),
-        ("updates", status_pill("Actualizaciones", "Comprobando...")),
-        ("gpu", status_pill("GPU", "Comprobando...")),
-        ("session", status_pill("Sesión", "Comprobando...")),
-        ("flatpak", status_pill("Flatpak", "Comprobando...")),
-    ]);
-
-    for (index, (_, widget)) in labels.iter().enumerate() {
-        grid.attach(widget, (index % 3) as i32, (index / 3) as i32, 1, 1);
-    }
-
-    let (tx, rx) = async_channel::bounded(1);
-    std::thread::spawn(move || {
-        let _ = tx.send_blocking(system_status::collect());
-    });
-    glib::MainContext::default().spawn_local(async move {
-        if let Ok(status) = rx.recv().await {
-            for (key, widget) in labels.iter() {
-                let value = match *key {
-                    "internet" => &status.internet,
-                    "updates" => &status.updates,
-                    "gpu" => &status.gpu,
-                    "session" => &status.session,
-                    "flatpak" => &status.flatpak,
-                    _ => "",
-                };
-                widget.set_text(&format!("{}: {value}", widget.widget_name()));
-            }
-        }
-    });
-
-    card
+fn create_intentions(parent: &Window) -> gtk::Box {
+    let section = card("¿Qué quieres hacer?"); let grid = gtk::Grid::new(); grid.set_column_spacing(10); grid.set_row_spacing(10); section.pack_start(&grid, false, false, 0);
+    for (index, (icon, title, profile)) in [("applications-development", "Programar", Some(1)), ("applications-games", "Jugar", Some(2)), ("applications-multimedia", "Crear contenido", None), ("system-software-install", "Instalar aplicaciones", None), ("preferences-system", "Configurar el sistema", None)].iter().enumerate() {
+        let btn = icon_text_button(icon, title); let parent = parent.clone(); let choice = *profile;
+        btn.connect_clicked(move |_| match choice { Some(index) => show_profile_dialog(&parent, package_installer::PROFILES[index]), None if title == &"Configurar el sistema" => { if let Err(e) = quick_actions::run_action(&quick_actions::QUICK_ACTIONS[0]) { show_message(&parent, gtk::MessageType::Warning, &e); } }, None => show_recommended_dialog(&parent) }); grid.attach(&btn, (index % 3) as i32, (index / 3) as i32, 1, 1);
+    } section
 }
 
-fn create_profiles(parent: &Window) -> gtk::Box {
-    let section = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    section.pack_start(&section_title("Perfiles rápidos"), false, false, 0);
-    let grid = gtk::Grid::new();
-    grid.set_column_spacing(14);
-    grid.set_row_spacing(14);
-    section.pack_start(&grid, false, false, 0);
+fn create_profiles(parent: &Window) -> gtk::Box { let section = gtk::Box::new(gtk::Orientation::Vertical, 12); section.pack_start(&section_title("Perfiles rápidos"), false, false, 0); let grid = gtk::Grid::new(); grid.set_column_spacing(14); section.pack_start(&grid, false, false, 0);
+    for (index, profile) in package_installer::PROFILES.iter().enumerate() { let item = gtk::Box::new(gtk::Orientation::Vertical, 9); item.style_context().add_class("profile-card"); let icon = gtk::Image::from_icon_name(Some(match profile.id { "development" => "applications-development", "gaming" => "applications-games", _ => "applications-system" }), gtk::IconSize::Dialog); item.pack_start(&icon, false, false, 0); item.pack_start(&section_title(profile.title), false, false, 0); item.pack_start(&label(profile.description, 0.0, Some("muted")), false, false, 0); item.pack_start(&label(&profile.items.iter().map(|p| p.label).collect::<Vec<_>>().join(" · "), 0.0, Some("chips")), false, false, 0); item.pack_start(&label(&format!("{} componentes disponibles", profile.items.len()), 0.0, Some("muted")), false, false, 0); let button = gtk::Button::with_label(&format!("Configurar {}", profile.title.to_lowercase())); button.style_context().add_class("suggested-action"); let p = parent.clone(); let profile = *profile; button.connect_clicked(move |_| show_profile_dialog(&p, profile)); item.pack_end(&button, false, false, 0); grid.attach(&item, index as i32, 0, 1, 1); } section }
 
-    for (index, profile) in package_installer::PROFILES.iter().enumerate() {
-        let item = gtk::Box::new(gtk::Orientation::Vertical, 10);
-        item.style_context().add_class("profile-card");
-        item.set_margin_top(2);
-        item.set_margin_bottom(2);
-        item.set_margin_start(2);
-        item.set_margin_end(2);
-        let title = label(profile.title, 0.0, None);
-        title.set_markup(&format!("<b>{}</b>", profile.title));
-        item.pack_start(&title, false, false, 0);
-        item.pack_start(&label(profile.description, 0.0, Some("muted")), false, false, 0);
-        let button = gtk::Button::with_label("Elegir componentes");
-        button.style_context().add_class("suggested-action");
-        let parent = parent.clone();
-        let profile = *profile;
-        button.connect_clicked(move |_| show_profile_dialog(&parent, profile));
-        item.pack_end(&button, false, false, 0);
-        item.set_size_request(260, 150);
-        grid.attach(&item, index as i32, 0, 1, 1);
-    }
-    section
-}
+fn create_recommended(parent: &Window) -> gtk::Box { let section = card("Aplicaciones recomendadas"); section.pack_start(&label("Explora aplicaciones de desarrollo, gaming, multimedia, oficina, Internet y utilidades. Solo se ofrecen paquetes de los repositorios configurados.", 0.0, Some("muted")), false, false, 0); let button = gtk::Button::with_label("Ver aplicaciones recomendadas"); button.style_context().add_class("suggested-action"); let p = parent.clone(); button.connect_clicked(move |_| show_recommended_dialog(&p)); section.pack_start(&button, false, false, 0); section }
 
-fn show_profile_dialog(parent: &Window, profile: package_installer::PackageProfile) {
-    let dialog = gtk::Dialog::with_buttons(
-        Some(profile.title),
-        Some(parent),
-        gtk::DialogFlags::MODAL,
-        &[("Cancelar", gtk::ResponseType::Cancel), ("Instalar selección", gtk::ResponseType::Accept)],
-    );
-    dialog.set_default_size(560, 420);
-    let content = dialog.content_area();
-    content.set_spacing(12);
-    content.set_margin_top(16);
-    content.set_margin_bottom(16);
-    content.set_margin_start(16);
-    content.set_margin_end(16);
-    content.pack_start(&label(profile.description, 0.0, Some("muted")), false, false, 0);
+fn show_recommended_dialog(parent: &Window) { let dialog = gtk::Dialog::with_buttons(Some("Aplicaciones recomendadas"), Some(parent), gtk::DialogFlags::MODAL, &[("Cerrar", gtk::ResponseType::Close)]); dialog.set_default_size(620, 560); let scroll = gtk::ScrolledWindow::new(gtk::Adjustment::NONE, gtk::Adjustment::NONE); scroll.set_policy(gtk::PolicyType::Never, gtk::PolicyType::Automatic); let body = gtk::Box::new(gtk::Orientation::Vertical, 10); body.set_margin_top(14); body.set_margin_bottom(14); body.set_margin_start(14); body.set_margin_end(14); for profile in package_installer::PROFILES { body.pack_start(&section_title(profile.title), false, false, 0); for item in profile.items { let row = gtk::Box::new(gtk::Orientation::Horizontal, 10); row.style_context().add_class("install-row"); let info = gtk::Box::new(gtk::Orientation::Vertical, 2); info.pack_start(&label(item.label, 0.0, None), false, false, 0); info.pack_start(&label(item.description, 0.0, Some("muted")), false, false, 0); row.pack_start(&info, true, true, 0); row.pack_start(&label(if package_installer::is_installed(item) { "Instalado" } else { "Disponible" }, 1.0, Some("muted")), false, false, 0); let p = parent.clone(); let current = *item; let b = gtk::Button::with_label(if package_installer::is_installed(item) { "Instalado" } else { "Instalar" }); b.set_sensitive(!package_installer::is_installed(item)); b.connect_clicked(move |_| confirm_and_install(&p, &package_installer::missing_packages(&[current]))); row.pack_start(&b, false, false, 0); body.pack_start(&row, false, false, 0); } } scroll.add(&body); dialog.content_area().pack_start(&scroll, true, true, 0); dialog.connect_response(|d, _| d.close()); dialog.show_all(); }
 
-    let checks: Rc<RefCell<Vec<(gtk::CheckButton, package_installer::PackageItem)>>> =
-        Rc::new(RefCell::new(Vec::new()));
-    for item in profile.items {
-        let row = gtk::Box::new(gtk::Orientation::Vertical, 4);
-        row.style_context().add_class("install-row");
-        row.set_margin_top(3);
-        row.set_margin_bottom(3);
-        row.set_margin_start(3);
-        row.set_margin_end(3);
-        let installed = package_installer::is_installed(item);
-        let suffix = match (installed, item.source) {
-            (true, _) => " · instalado",
-            (false, package_installer::PackageSource::Unavailable) => " · fuente no disponible todavía",
-            _ => "",
-        };
-        let check = gtk::CheckButton::with_label(&format!("{}{}", item.label, suffix));
-        check.set_active(!installed && item.source == package_installer::PackageSource::Pacman);
-        check.set_sensitive(!installed && item.source == package_installer::PackageSource::Pacman);
-        row.pack_start(&check, false, false, 0);
-        row.pack_start(&label(&format!("Paquetes: {}", item.packages.join(", ")), 0.0, Some("muted")), false, false, 0);
-        content.pack_start(&row, false, false, 0);
-        checks.borrow_mut().push((check, *item));
-    }
+fn show_profile_dialog(parent: &Window, profile: package_installer::PackageProfile) { let dialog = gtk::Dialog::with_buttons(Some(profile.title), Some(parent), gtk::DialogFlags::MODAL, &[("Cancelar", gtk::ResponseType::Cancel), ("Instalar seleccionados", gtk::ResponseType::Accept)]); dialog.set_default_size(610, 520); let content = dialog.content_area(); content.set_spacing(8); content.set_margin_top(14); content.set_margin_bottom(14); content.set_margin_start(14); content.set_margin_end(14); content.pack_start(&label(profile.description, 0.0, Some("muted")), false, false, 0); let controls = gtk::Box::new(gtk::Orientation::Horizontal, 8); let recommended = gtk::Button::with_label("Seleccionar recomendados"); let all = gtk::Button::with_label("Seleccionar todo"); let clear = gtk::Button::with_label("Limpiar selección"); let counter = label("0 paquetes seleccionados", 1.0, Some("muted")); controls.pack_start(&recommended, false, false, 0); controls.pack_start(&all, false, false, 0); controls.pack_start(&clear, false, false, 0); controls.pack_end(&counter, false, false, 0); content.pack_start(&controls, false, false, 0); let checks: Rc<RefCell<Vec<(gtk::CheckButton, package_installer::PackageItem)>>> = Rc::new(RefCell::new(Vec::new())); for item in profile.items { let row = gtk::Box::new(gtk::Orientation::Vertical, 3); row.style_context().add_class("install-row"); let installed = package_installer::is_installed(item); let check = gtk::CheckButton::with_label(item.label); check.set_sensitive(!installed && item.source == package_installer::PackageSource::Pacman); row.pack_start(&check, false, false, 0); row.pack_start(&label(&format!("{} · Paquete: {}{}", item.description, item.packages.join(", "), if installed { " · ya instalado" } else { "" }), 0.0, Some("muted")), false, false, 0); let count = counter.clone(); let c = checks.clone(); check.connect_toggled(move |_| count.set_text(&format!("{} paquetes seleccionados", c.borrow().iter().filter(|(b, _)| b.is_active()).count()))); content.pack_start(&row, false, false, 0); checks.borrow_mut().push((check, *item)); } for (button, active) in [(&recommended, true), (&all, true), (&clear, false)] { let c = checks.clone(); let count = counter.clone(); button.connect_clicked(move |_| { for (check, item) in c.borrow().iter() { check.set_active(active && item.source == package_installer::PackageSource::Pacman && !package_installer::is_installed(item)); } count.set_text(&format!("{} paquetes seleccionados", c.borrow().iter().filter(|(b, _)| b.is_active()).count())); }); } dialog.show_all(); if glib::MainContext::default().block_on(dialog.run_future()) == gtk::ResponseType::Accept { let selected = checks.borrow().iter().filter_map(|(b, item)| b.is_active().then_some(*item)).collect::<Vec<_>>(); confirm_and_install(parent, &package_installer::missing_packages(&selected)); } dialog.close(); }
 
-    dialog.show_all();
-    let response = glib::MainContext::default().block_on(dialog.run_future());
-    if response == gtk::ResponseType::Accept {
-        let selected: Vec<_> = checks
-            .borrow()
-            .iter()
-            .filter_map(|(check, item)| check.is_active().then_some(*item))
-            .collect();
-        let packages = package_installer::missing_packages(&selected);
-        confirm_and_install(parent, &packages);
-    }
-    dialog.close();
-}
+fn confirm_and_install(parent: &Window, packages: &[&str]) { if packages.is_empty() { show_message(parent, gtk::MessageType::Info, "No has seleccionado paquetes nuevos."); return; } let confirm = gtk::MessageDialog::new(Some(parent), gtk::DialogFlags::MODAL, gtk::MessageType::Question, gtk::ButtonsType::OkCancel, &format!("Se instalarán estos paquetes oficiales:\n\n{}", packages.join(", "))); let accepted = glib::MainContext::default().block_on(confirm.run_future()) == gtk::ResponseType::Ok; confirm.close(); if !accepted { return; } let progress = gtk::MessageDialog::new(Some(parent), gtk::DialogFlags::MODAL, gtk::MessageType::Info, gtk::ButtonsType::None, "Instalando paquetes… puedes cancelar en el diálogo de autenticación."); progress.show_all(); let p = parent.clone(); let names = packages.iter().map(|s| (*s).to_owned()).collect::<Vec<_>>(); let (tx, rx) = async_channel::bounded(1); std::thread::spawn(move || { let refs = names.iter().map(String::as_str).collect::<Vec<_>>(); let _ = tx.send_blocking(package_installer::install_packages(&refs)); }); glib::MainContext::default().spawn_local(async move { if let Ok(result) = rx.recv().await { progress.close(); show_message(&p, if result.is_ok() { gtk::MessageType::Info } else { gtk::MessageType::Error }, &result.map(|_| "Instalación finalizada.".into()).unwrap_or_else(|e| format!("No se pudo completar la instalación.\n\n{e}"))); } }); }
 
-fn confirm_and_install(parent: &Window, packages: &[&str]) {
-    let message = if packages.is_empty() {
-        "Todo lo seleccionado ya está instalado.".to_owned()
-    } else {
-        format!("Se instalarán estos paquetes:\n\n{}", packages.join(", "))
-    };
-    let confirm = gtk::MessageDialog::new(
-        Some(parent),
-        gtk::DialogFlags::MODAL,
-        gtk::MessageType::Question,
-        gtk::ButtonsType::OkCancel,
-        &message,
-    );
-    let accepted = glib::MainContext::default().block_on(confirm.run_future()) == gtk::ResponseType::Ok;
-    confirm.close();
-    if !accepted || packages.is_empty() {
-        return;
-    }
+fn create_quick_actions(preferences: &serde_json::Value, parent: &Window) -> gtk::Box { let section = card("Acciones rápidas"); let grid = gtk::Grid::new(); grid.set_column_spacing(10); grid.set_row_spacing(10); section.pack_start(&grid, false, false, 0); for (index, action) in quick_actions::QUICK_ACTIONS.iter().enumerate() { let b = icon_text_button(match action.id { "updates" => "system-software-update", "settings" => "preferences-system", "display" => "video-display", "network" => "network-wireless", "system-info" => "dialog-information", _ => "system-software-install" }, action.label); if action.id == "system-info" { let p = parent.clone(); b.connect_clicked(move |_| show_system_info(&p)); } else { let a = action.clone(); let p = parent.clone(); b.connect_clicked(move |_| if let Err(e) = quick_actions::run_action(&a) { show_message(&p, gtk::MessageType::Warning, &e); }); } grid.attach(&b, (index % 3) as i32, (index / 3) as i32, 1, 1); } let docs = icon_text_button("help-browser", "Abrir documentación"); let paths = preferences["documentation_paths"].as_array().map(|v| v.iter().filter_map(|x| x.as_str().map(ToOwned::to_owned)).collect()).unwrap_or_default(); let p = parent.clone(); docs.connect_clicked(move |_| if let Err(e) = quick_actions::open_documentation(&paths) { show_message(&p, gtk::MessageType::Warning, &e); }); grid.attach(&docs, 0, 2, 1, 1); section }
 
-    let progress = gtk::MessageDialog::new(
-        Some(parent),
-        gtk::DialogFlags::MODAL,
-        gtk::MessageType::Info,
-        gtk::ButtonsType::None,
-        "Instalando paquetes. Puedes cancelar desde el diálogo de autenticación si lo necesitas.",
-    );
-    progress.show_all();
-    let parent = parent.clone();
-    let packages: Vec<String> = packages.iter().map(|package| (*package).to_owned()).collect();
-    let (tx, rx) = async_channel::bounded(1);
-    std::thread::spawn(move || {
-        let package_refs: Vec<&str> = packages.iter().map(String::as_str).collect();
-        let _ = tx.send_blocking(package_installer::install_packages(&package_refs));
-    });
-    glib::MainContext::default().spawn_local(async move {
-        if let Ok(result) = rx.recv().await {
-            progress.close();
-            let (kind, text) = match result {
-                Ok(_) => (gtk::MessageType::Info, "Instalación finalizada.".to_owned()),
-                Err(e) => (gtk::MessageType::Error, format!("No se pudo completar la instalación:\n\n{e}")),
-            };
-            let done = gtk::MessageDialog::new(
-                Some(&parent),
-                gtk::DialogFlags::MODAL,
-                kind,
-                gtk::ButtonsType::Ok,
-                &text,
-            );
-            done.connect_response(|dialog, _| dialog.close());
-            done.present();
-        }
-    });
-}
+fn create_first_steps(preferences: &serde_json::Value, parent: &Window) -> gtk::Box { let section = card("Primeros pasos"); let path = preferences["save_path"].as_str().unwrap().to_owned(); let state = Rc::new(RefCell::new(first_steps::load(&path))); for (id, title) in first_steps::TASKS { let row = gtk::Box::new(gtk::Orientation::Horizontal, 10); row.style_context().add_class("step-row"); let check = gtk::CheckButton::with_label(title); check.set_active(state.borrow().completed.iter().any(|x| x == id)); let path2 = path.clone(); let saved = state.clone(); check.connect_toggled(move |b| { first_steps::set_completed(&mut saved.borrow_mut(), id, b.is_active()); first_steps::save(&path2, &saved.borrow()); }); row.pack_start(&check, true, true, 0); if *id == "display" { let button = gtk::Button::with_label("Abrir"); let p = parent.clone(); button.connect_clicked(move |_| { let _ = quick_actions::run_action(&quick_actions::QUICK_ACTIONS[4]); show_message(&p, gtk::MessageType::Info, "Puedes revisar pantallas y escalado en Ajustes."); }); row.pack_end(&button, false, false, 0); } section.pack_start(&row, false, false, 0); } section }
 
-fn create_quick_actions(preferences: &serde_json::Value, parent: &Window) -> gtk::Box {
-    let section = card("Acciones rápidas");
-    let grid = gtk::Grid::new();
-    grid.set_column_spacing(10);
-    grid.set_row_spacing(10);
-    section.pack_start(&grid, false, false, 0);
-    let parent = parent.clone();
-    for (index, action) in quick_actions::QUICK_ACTIONS.iter().enumerate() {
-        let button = gtk::Button::with_label(action.label);
-        let action = action.clone();
-        let parent = parent.clone();
-        button.connect_clicked(move |_| {
-            if let Err(e) = quick_actions::run_action(&action) {
-                show_message(&parent, gtk::MessageType::Warning, &e);
-            }
-        });
-        grid.attach(&button, (index % 3) as i32, (index / 3) as i32, 1, 1);
-    }
-
-    let docs = gtk::Button::with_label("Documentación local");
-    let paths: Vec<String> = preferences["documentation_paths"]
-        .as_array()
-        .map(|items| items.iter().filter_map(|v| v.as_str().map(ToOwned::to_owned)).collect())
-        .unwrap_or_default();
-    let parent = parent.clone();
-    docs.connect_clicked(move |_| {
-        if let Err(e) = quick_actions::open_documentation(&paths) {
-            show_message(&parent, gtk::MessageType::Warning, &e);
-        }
-    });
-    grid.attach(&docs, 0, 2, 1, 1);
-    section
-}
-
-fn create_first_steps(preferences: &serde_json::Value) -> gtk::Box {
-    let section = card("Primeros pasos");
-    let save_path = preferences["save_path"].as_str().unwrap().to_owned();
-    let state = Rc::new(RefCell::new(first_steps::load(&save_path)));
-    for (id, title) in first_steps::TASKS {
-        let check = gtk::CheckButton::with_label(title);
-        check.set_active(state.borrow().completed.iter().any(|item| item == id));
-        let save_path = save_path.clone();
-        let state = state.clone();
-        check.connect_toggled(move |check| {
-            first_steps::set_completed(&mut state.borrow_mut(), id, check.is_active());
-            first_steps::save(&save_path, &state.borrow());
-        });
-        section.pack_start(&check, false, false, 0);
-    }
-    section
-}
-
-fn create_footer(preferences: &serde_json::Value) -> gtk::Box {
-    let footer = gtk::Box::new(gtk::Orientation::Horizontal, 10);
-    footer.set_halign(gtk::Align::End);
-    let label = gtk::Label::new(Some("Ejecutar GuepardOS Welcome al iniciar sesión"));
-    label.style_context().add_class("muted");
-    let autostart = gtk::Switch::new();
-    let autostart_path = utils::fix_path(preferences["autostart_path"].as_str().unwrap());
-    autostart.set_active(Path::new(&autostart_path).exists());
-    autostart.connect_state_set(|_switch, state| {
-        if let Some(window) = crate::G_HELLO_WINDOW.get() {
-            window.set_autostart(state);
-        }
-        glib::Propagation::Proceed
-    });
-    footer.pack_start(&label, false, false, 0);
-    footer.pack_start(&autostart, false, false, 0);
-    footer
-}
-
-fn card(title: &str) -> gtk::Box {
-    let card = gtk::Box::new(gtk::Orientation::Vertical, 12);
-    card.set_margin_top(2);
-    card.set_margin_bottom(2);
-    card.set_margin_start(2);
-    card.set_margin_end(2);
-    card.style_context().add_class("status-card");
-    card.pack_start(&section_title(title), false, false, 0);
-    card
-}
-
-fn section_title(title: &str) -> gtk::Label {
-    let label = label(title, 0.0, None);
-    label.set_markup(&format!("<span size=\"large\" weight=\"bold\">{title}</span>"));
-    label
-}
-
-fn status_pill(name: &str, value: &str) -> gtk::Label {
-    let pill = label(&format!("{name}: {value}"), 0.0, Some("status-pill"));
-    pill.set_widget_name(name);
-    pill.set_size_request(220, 42);
-    pill
-}
-
-fn label(text: &str, xalign: f32, class_name: Option<&str>) -> gtk::Label {
-    let label = gtk::Label::new(Some(text));
-    label.set_xalign(xalign);
-    label.set_line_wrap(true);
-    if let Some(class_name) = class_name {
-        label.style_context().add_class(class_name);
-    }
-    label
-}
-
-fn show_message(parent: &Window, kind: gtk::MessageType, text: &str) {
-    let dialog = gtk::MessageDialog::new(
-        Some(parent),
-        gtk::DialogFlags::MODAL,
-        kind,
-        gtk::ButtonsType::Ok,
-        text,
-    );
-    dialog.connect_response(|dialog, _| dialog.close());
-    dialog.present();
-}
+fn create_footer(preferences: &serde_json::Value) -> gtk::Box { let footer = gtk::Box::new(gtk::Orientation::Horizontal, 10); footer.set_halign(gtk::Align::End); footer.pack_start(&label("Ejecutar GuepardOS Welcome al iniciar sesión", 0.0, Some("muted")), false, false, 0); let s = gtk::Switch::new(); s.set_active(Path::new(&utils::fix_path(preferences["autostart_path"].as_str().unwrap())).exists()); s.connect_state_set(|_, active| { with_hello_window(|w| w.set_autostart(active)); glib::Propagation::Proceed }); footer.pack_start(&s, false, false, 0); footer }
+fn show_system_info(parent: &Window) { let s = system_status::collect(); let text = format!("GuepardOS\nVersión: {}\nKernel: {}\nArquitectura: {}\nSesión gráfica: {}\nGPU: {}\nEspacio libre: {}\nHostname: {}", system_status::guepardos_version().unwrap_or_else(|| VERSION.into()), std::fs::read_to_string("/proc/sys/kernel/osrelease").unwrap_or_else(|_| "No disponible".into()).trim(), std::env::consts::ARCH, s.session, s.gpu, s.disk, std::env::var("HOSTNAME").unwrap_or_else(|_| "No disponible".into())); let d = gtk::MessageDialog::new(Some(parent), gtk::DialogFlags::MODAL, gtk::MessageType::Info, gtk::ButtonsType::Close, &text); d.connect_response(|d, _| d.close()); d.present(); }
+fn card(title: &str) -> gtk::Box { let c = gtk::Box::new(gtk::Orientation::Vertical, 12); c.style_context().add_class("status-card"); c.pack_start(&section_title(title), false, false, 0); c }
+fn section_title(text: &str) -> gtk::Label { let l = label(text, 0.0, None); l.set_markup(&format!("<span size=\"large\" weight=\"bold\">{text}</span>")); l }
+fn label(text: &str, align: f32, class: Option<&str>) -> gtk::Label { let l = gtk::Label::new(Some(text)); l.set_xalign(align); l.set_line_wrap(true); if let Some(class) = class { l.style_context().add_class(class); } l }
+fn icon_button(icon: &str, tooltip: &str) -> gtk::Button { let b = gtk::Button::from_icon_name(Some(icon), gtk::IconSize::Button); b.set_tooltip_text(Some(tooltip)); b }
+fn icon_text_button(icon: &str, text: &str) -> gtk::Button { let b = gtk::Button::new(); let row = gtk::Box::new(gtk::Orientation::Horizontal, 7); row.pack_start(&gtk::Image::from_icon_name(Some(icon), gtk::IconSize::Button), false, false, 0); row.pack_start(&label(text, 0.0, None), false, false, 0); b.add(&row); b.set_tooltip_text(Some(text)); b }
+fn status_class(value: &str) -> &'static str { if value == "Conectado" || value == "Activo" || value == "Configurados" || value == "Instalado" || value == "Sistema al día" || value == "Disponible" { "status-good" } else if value.contains("disponibles") || value.contains("No está") || value.contains("No configurados") || value.contains("No detectado") { "status-warning" } else { "status-neutral" } }
+fn show_message(parent: &Window, kind: gtk::MessageType, text: &str) { let d = gtk::MessageDialog::new(Some(parent), gtk::DialogFlags::MODAL, kind, gtk::ButtonsType::Ok, text); d.connect_response(|d, _| d.close()); d.present(); }
+fn status_tile(icon: &str, title: &str, initial: &str) -> (gtk::Box, gtk::Label) { let l = label(initial, 0.0, Some("status-value")); let b = gtk::Box::new(gtk::Orientation::Vertical, 2); b.style_context().add_class("status-tile"); let h = gtk::Box::new(gtk::Orientation::Horizontal, 7); h.pack_start(&gtk::Image::from_icon_name(Some(icon), gtk::IconSize::Menu), false, false, 0); h.pack_start(&label(title, 0.0, Some("muted")), true, true, 0); b.pack_start(&h, false, false, 0); b.pack_start(&l, false, false, 0); (b, l) }
