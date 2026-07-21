@@ -38,7 +38,7 @@ impl HelloWindow {
         Self { builder, window, preferences }
     }
     pub fn show_about_dialog(&self) {
-        let dialog = gtk::AboutDialog::builder().transient_for(&self.window).modal(true).program_name("GuepardOS Welcome").comments("Aplicación de bienvenida privada y sin telemetría.").version(VERSION).authors(vec!["GuepardOS team".into()]).license_type(gtk::License::Gpl30).website("https://github.com/GuepardOS/guepardos-welcome").build();
+        let dialog = gtk::AboutDialog::builder().transient_for(&self.window).modal(true).program_name("GuepardOS Welcome").comments("Aplicación de bienvenida privada y sin telemetría.").version(VERSION).authors(vec![String::from("GuepardOS team")]).license_type(gtk::License::Gpl30).website("https://github.com/GuepardOS/guepardos-welcome").build();
         dialog.connect_response(|d, _| d.close()); dialog.present();
     }
     pub fn switch_locale(&self, _use_locale: &str) {}
