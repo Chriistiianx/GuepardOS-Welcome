@@ -54,7 +54,8 @@ fn pending_updates() -> String {
 pub fn detect_gpu() -> String {
     let output = Exec::cmd("lspci").stdout(Redirection::Pipe).stderr(Redirection::Null).capture();
     let Ok(output) = output else { return "GPU no detectada".into() };
-    let line = output.stdout_str().lines().find(|line| {
+    let stdout = output.stdout_str();
+    let line = stdout.lines().find(|line| {
         let lower = line.to_lowercase();
         lower.contains("vga compatible controller") || lower.contains("3d controller") || lower.contains("display controller")
     });
