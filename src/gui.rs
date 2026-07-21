@@ -30,9 +30,7 @@ impl UI for Gui {
         dialog.connect_response(|dialog, _| dialog.close());
 
         dialog.show();
-        // block until user responds
-        dialog.run();
-        // we are required to close/hide manually according to the docs
+        gtk::glib::MainContext::default().block_on(dialog.run_future());
         dialog.close();
     }
 }

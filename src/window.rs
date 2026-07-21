@@ -110,8 +110,8 @@ impl HelloWindow {
             dialog.set_logo(Some(&logo));
         }
 
-        dialog.run();
-        dialog.hide();
+        dialog.connect_response(|dialog, _| dialog.close());
+        dialog.present();
     }
 
     pub fn switch_locale(&self, _use_locale: &str) {}
@@ -292,7 +292,8 @@ fn show_profile_dialog(parent: &Window, profile: package_installer::PackageProfi
     }
 
     dialog.show_all();
-    if dialog.run() == gtk::ResponseType::Accept {
+    let response = glib::MainContext::default().block_on(dialog.run_future());
+    if response == gtk::ResponseType::Accept {
         let selected: Vec<_> = checks
             .borrow()
             .iter()
@@ -301,7 +302,7 @@ fn show_profile_dialog(parent: &Window, profile: package_installer::PackageProfi
         let packages = package_installer::missing_packages(&selected);
         confirm_and_install(parent, &packages);
     }
-    dialog.destroy();
+    dialog.close();
 }
 
 fn confirm_and_install(parent: &Window, packages: &[&str]) {
@@ -317,8 +318,8 @@ fn confirm_and_install(parent: &Window, packages: &[&str]) {
         gtk::ButtonsType::OkCancel,
         &message,
     );
-    let accepted = confirm.run() == gtk::ResponseType::Ok;
-    confirm.destroy();
+    let accepted = glib::MainContext::default().block_on(confirm.run_future()) == gtk::ResponseType::Ok;
+    confirm.close();
     if !accepted || packages.is_empty() {
         return;
     }
@@ -340,7 +341,7 @@ fn confirm_and_install(parent: &Window, packages: &[&str]) {
     });
     glib::MainContext::default().spawn_local(async move {
         if let Ok(result) = rx.recv().await {
-            progress.destroy();
+            progress.close();
             let (kind, text) = match result {
                 Ok(_) => (gtk::MessageType::Info, "Instalación finalizada.".to_owned()),
                 Err(e) => (gtk::MessageType::Error, format!("No se pudo completar la instalación:\n\n{e}")),
@@ -352,8 +353,8 @@ fn confirm_and_install(parent: &Window, packages: &[&str]) {
                 gtk::ButtonsType::Ok,
                 &text,
             );
-            done.run();
-            done.destroy();
+            done.connect_response(|dialog, _| dialog.close());
+            done.present();
         }
     });
 }
@@ -418,12 +419,11 @@ fn create_footer(preferences: &serde_json::Value) -> gtk::Box {
     let autostart = gtk::Switch::new();
     let autostart_path = utils::fix_path(preferences["autostart_path"].as_str().unwrap());
     autostart.set_active(Path::new(&autostart_path).exists());
-    autostart.connect_state_set(|switch, state| {
+    autostart.connect_state_set(|_switch, state| {
         if let Some(window) = crate::G_HELLO_WINDOW.get() {
             window.set_autostart(state);
         }
-        switch.set_state(state);
-        gtk::Inhibit(false)
+        glib::Propagation::Proceed
     });
     footer.pack_start(&label, false, false, 0);
     footer.pack_start(&autostart, false, false, 0);
@@ -472,6 +472,6 @@ fn show_message(parent: &Window, kind: gtk::MessageType, text: &str) {
         gtk::ButtonsType::Ok,
         text,
     );
-    dialog.run();
-    dialog.destroy();
+    dialog.connect_response(|dialog, _| dialog.close());
+    dialog.present();
 }
